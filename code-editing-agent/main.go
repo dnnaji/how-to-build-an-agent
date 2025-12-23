@@ -46,7 +46,7 @@ type Agent struct {
 }
 
 func (a *Agent) Run(ctx context.Context) error {
-	model := "gemini-2.5-flash"
+	model := "gemini-3-flash-preview"
 	fmt.Printf("Chat with %s (use 'ctlr-c' to exit)\n", model)
 
 	chat, err := a.client.Chats.Create(ctx, model, nil, nil)
