@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"google.golang.org/genai"
 )
@@ -20,7 +21,7 @@ type Agent struct {
 
 // NewAgent creates a new Agent.
 func NewAgent(client *genai.Client, getUserMessage func() (string, bool), sandbox *PathSandbox, debugMode bool) *Agent {
-	model := "gemini-2.0-flash"
+	model := "gemini-3-flash-preview"
 	return &Agent{
 		client:         client,
 		getUserMessage: getUserMessage,
@@ -43,6 +44,9 @@ func (a *Agent) Run(ctx context.Context) error {
 		userInput, ok := a.getUserMessage()
 		if !ok {
 			break
+		}
+		if strings.TrimSpace(userInput) == "" {
+			continue
 		}
 
 		// Append user message to history
@@ -129,8 +133,10 @@ func (a *Agent) streamModelResponse(ctx context.Context) (*genai.Content, []*gen
 				allCalls = append(allCalls, part.FunctionCall)
 			}
 
-			// Add to parts for history
-			allParts = append(allParts, part)
+			// Add to parts for history if it has a valid data payload.
+			if partHasData(part) {
+				allParts = append(allParts, part)
+			}
 		}
 	}
 
@@ -145,6 +151,18 @@ func (a *Agent) streamModelResponse(ctx context.Context) (*genai.Content, []*gen
 	}
 
 	return modelContent, allCalls, nil
+}
+
+// partHasData returns true when the part sets a concrete data field.
+// Thought-only parts are excluded because the API requires a data field.
+func partHasData(part *genai.Part) bool {
+	return part != nil && (part.Text != "" ||
+		part.FunctionCall != nil ||
+		part.FunctionResponse != nil ||
+		part.InlineData != nil ||
+		part.FileData != nil ||
+		part.ExecutableCode != nil ||
+		part.CodeExecutionResult != nil)
 }
 
 // executeToolCalls executes all function calls and returns FunctionResponse parts.

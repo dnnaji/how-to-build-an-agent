@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// Parse CLI flags
-	model := flag.String("model", "gemini-2.0-flash", "Model to use")
+	model := flag.String("model", "gemini-3-flash-preview", "Model to use")
 	root := flag.String("root", "", "Project root (default: current working directory)")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
