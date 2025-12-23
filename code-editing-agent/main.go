@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/anthropics/anthropic-sdk-go"
+	"google.golang.org/genai"
 )
 
 func main() {
 
-	client := anthropic.NewClient()
+	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{})
+	if err != nil {
+		fmt.Printf("Error creating client: %v\n", err.Error())
+		return
+	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -22,14 +26,14 @@ func main() {
 		return scanner.Text(), true
 	}
 
-	agent := NewAgent(&client, getUserMessage)
-	err := agent.Run(context.TODO())
+	agent := NewAgent(client, getUserMessage)
+	err = agent.Run(context.TODO())
 	if err != nil {
 		fmt.Printf("Error running agent: %v\n", err.Error())
 	}
 }
 
-func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool)) *Agent {
+func NewAgent(client *genai.Client, getUserMessage func() (string, bool)) *Agent {
 	return &Agent{
 		client:         client,
 		getUserMessage: getUserMessage,
@@ -37,12 +41,32 @@ func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool)) *A
 }
 
 type Agent struct {
-	client         *anthropic.Client
+	client         *genai.Client
 	getUserMessage func() (string, bool)
 }
+
+func (a *Agent) Run(ctx context.Context) error {
+	model := "gemini-2.5-flash"
+	fmt.Printf("Chat with %s (use 'ctlr-c' to exit)\n", model)
+
+	chat, err := a.client.Chats.Create(ctx, model, nil, nil)
+	if err != nil {
+		return err
+	}
+
 	for {
-		userMessage, ok := a.getUserMessage()
+		fmt.Print("\u001b[94mYou:\u001b[0m ")
+		userInput, ok := a.getUserMessage()
 		if !ok {
 			break
 		}
+
+		result, err := chat.SendMessage(ctx, genai.Part{Text: userInput})
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("\u001b[93mGemini:\u001b[0m %s\n", result.Text())
 	}
+	return nil
+}
